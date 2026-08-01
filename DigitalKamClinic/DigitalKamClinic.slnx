@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="DigitalKamClinic.Shared/DigitalKamClinic.Shared.csproj" />
+  <Project Path="DigitalKamClinic/DigitalKamClinic.csproj" />
+</Solution>
