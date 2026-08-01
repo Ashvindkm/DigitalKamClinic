@@ -1,4 +1,6 @@
-﻿@rendermode InteractiveServer
+﻿@inject NavigationManager NavigationManager
+@inject ILocalStorageService LocalStorage
+@rendermode InteractiveServer
 
 <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme"
      id="layout-navbar">
@@ -82,22 +84,22 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // if (firstRender)
-        // {
-        //     userAccount = await LocalStorage.GetItemAsync<UserDTO>("UserDTO");
+        if (firstRender)
+        {
+            userAccount = await LocalStorage.GetItemAsync<UserDTO>("UserDTO");
 
-        //     if (userAccount == null || userAccount.Id == null)
-        //     {
-        //         NavigationManager.NavigateTo("/signin");
-        //         return;
-        //     }
-        // }
+            if (userAccount == null || userAccount.Id == null)
+            {
+                NavigationManager.NavigateTo("/signin");
+                return;
+            }
+        }
     }
 
     async Task Signout()
     {
-        // await LocalStorage.RemoveItemAsync("UserDTO");
+        await LocalStorage.RemoveItemAsync("UserDTO");
 
-        // NavigationManager.NavigateTo("/signin");
+        NavigationManager.NavigateTo("/signin");
     }
 }

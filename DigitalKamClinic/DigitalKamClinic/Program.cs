@@ -1,10 +1,12 @@
 global using Blazored.LocalStorage;
-global using DigitalKamClinic.Shared.Entities;
-global using DigitalKamClinic.Shared.DTOs;
-global using DigitalKamClinic.Shared.Helpers;
-global using DigitalKamClinic.Shared.Enums;
 global using DigitalKamClinic.Data;
+global using DigitalKamClinic.Shared.DTOs;
+global using DigitalKamClinic.Shared.Entities;
+global using DigitalKamClinic.Shared.Enums;
+global using DigitalKamClinic.Shared.Helpers;
+global using Blazored.LocalStorage;
 using DigitalKamClinic.Components;
+using DigitalKamClinic.Services.UserAuthService;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,10 +15,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddBlazoredLocalStorage();
+
 builder.Services.AddDbContextFactory<DataContext>(options =>
 {
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+builder.Services.AddScoped<IUserAuthService, UserAuthService>();
 
 var app = builder.Build();
 
