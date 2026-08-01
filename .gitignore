@@ -351,3 +351,4 @@ MigrationBackup/
 
 # Migrations
 Migrations/
+/DigitalKamClinic/DigitalKamClinic/wwwroot/full-version
