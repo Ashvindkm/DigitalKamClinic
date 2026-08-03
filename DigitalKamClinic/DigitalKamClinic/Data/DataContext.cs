@@ -48,6 +48,7 @@ namespace DigitalKamClinic.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Member> Members { get; set; }
         public DbSet<Address> Address { get; set; }
+        public DbSet<Patient> Patients { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<ConfigEntity> ConfigEntities { get; set; }
         public DbSet<ConfigEntityDetail> ConfigEntityDetails { get; set; }

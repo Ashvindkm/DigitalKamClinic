@@ -1,9 +1,14 @@
 @page "/visits/new"
-@using DigitalKamClinic.Data
-@using DigitalKamClinic.Shared.Entities
-@using Microsoft.EntityFrameworkCore
-@inject DataContext DbContext
+@using DigitalKamClinic.Services.VisitService
+@using DigitalKamClinic.Services.PatientService
+@using DigitalKamClinic.Services.LocationService
+@using DigitalKamClinic.Services.AppointmentService
+@inject IVisitService VisitService
+@inject IPatientService PatientService
+@inject ILocationService LocationService
+@inject IAppointmentService AppointmentService
 @inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 <PageTitle>Record Visit - Dental Clinic</PageTitle>
 
@@ -52,7 +57,7 @@
                                 <div class="d-flex align-items-center">
                                     <i class="ti ti-user-heart me-3" style="font-size: 2rem;"></i>
                                     <div>
-                                        <h6 class="mb-1">Patient: <strong>@patient.EntityName</strong></h6>
+                                        <h6 class="mb-1">Patient: <strong>@patient.FullName</strong></h6>
                                         @if (appointment != null)
                                         {
                                             <small class="text-muted">
@@ -75,7 +80,7 @@
                                             <option value="">-- Select Patient --</option>
                                             @foreach (var p in patients)
                                             {
-                                                <option value="@p.Id">@p.EntityName</option>
+                                                <option value="@p.Id">@p.FullName</option>
                                             }
                                         </select>
                                     </div>
@@ -201,9 +206,9 @@
     [SupplyParameterFromQuery]
     public Guid? PatientId { get; set; }
 
-    private Entity? patient;
+    private Patient? patient;
     private Appointment? appointment;
-    private List<Entity> patients = new();
+    private List<Patient> patients = new();
     private List<Location> locations = new();
 
     private string selectedPatientId = string.Empty;
@@ -232,33 +237,44 @@
 
     private async Task LoadData()
     {
-        try
+        var locationsResponse = await LocationService.GetAllLocationsAsync();
+        if (locationsResponse.Success && locationsResponse.Data != null)
         {
-            locations = await DbContext.Locations.OrderBy(l => l.Name).ToListAsync();
-            patients = await DbContext.Entities.OrderBy(e => e.EntityName).ToListAsync();
+            locations = locationsResponse.Data;
+        }
 
-            if (AppointmentId.HasValue && AppointmentId != Guid.Empty)
+        var patientsResponse = await PatientService.GetAllPatientsAsync();
+        if (patientsResponse.Success && patientsResponse.Data != null)
+        {
+            patients = patientsResponse.Data;
+        }
+
+        if (AppointmentId.HasValue && AppointmentId != Guid.Empty)
+        {
+            var appointmentResponse = await AppointmentService.GetAppointmentByIdAsync(AppointmentId.Value);
+            if (appointmentResponse.Success && appointmentResponse.Data != null)
             {
-                appointment = await DbContext.Appointments.FindAsync(AppointmentId.Value);
-                if (appointment != null)
+                appointment = appointmentResponse.Data;
+                selectedLocationId = appointment.LocationId?.ToString() ?? string.Empty;
+                if (appointment.EntityId.HasValue)
                 {
-                    selectedLocationId = appointment.LocationId?.ToString() ?? string.Empty;
-                    if (appointment.EntityId.HasValue)
+                    var patientResponse = await PatientService.GetPatientByIdAsync(appointment.EntityId.Value);
+                    if (patientResponse.Success && patientResponse.Data != null)
                     {
-                        patient = await DbContext.Entities.FindAsync(appointment.EntityId.Value);
+                        patient = patientResponse.Data;
                         selectedPatientId = appointment.EntityId.Value.ToString();
                     }
                 }
             }
-            else if (PatientId.HasValue && PatientId != Guid.Empty)
+        }
+        else if (PatientId.HasValue && PatientId != Guid.Empty)
+        {
+            var patientResponse = await PatientService.GetPatientByIdAsync(PatientId.Value);
+            if (patientResponse.Success && patientResponse.Data != null)
             {
-                patient = await DbContext.Entities.FindAsync(PatientId.Value);
+                patient = patientResponse.Data;
                 selectedPatientId = PatientId.Value.ToString();
             }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error loading data: {ex.Message}";
         }
     }
 
@@ -267,7 +283,11 @@
         selectedPatientId = e.Value?.ToString() ?? string.Empty;
         if (Guid.TryParse(selectedPatientId, out var patientId))
         {
-            patient = await DbContext.Entities.FindAsync(patientId);
+            var patientResponse = await PatientService.GetPatientByIdAsync(patientId);
+            if (patientResponse.Success && patientResponse.Data != null)
+            {
+                patient = patientResponse.Data;
+            }
         }
     }
 
@@ -294,101 +314,37 @@
         isSaving = true;
         errorMessage = string.Empty;
 
-        try
+        var visitDto = new VisitCreateDTO
         {
-            Guid? effectiveAppointmentId = AppointmentId;
+            AppointmentId = AppointmentId,
+            PatientId = patient?.Id ?? Guid.Parse(selectedPatientId),
+            LocationId = Guid.Parse(selectedLocationId),
+            VisitDate = visitDate,
+            ChiefComplaint = chiefComplaint,
+            TreatmentPerformed = treatmentPerformed,
+            Diagnosis = diagnosis,
+            ClinicalNotes = clinicalNotes,
+            Prescription = prescription,
+            NextVisitAdvice = nextVisitAdvice,
+            Cost = cost,
+            PaymentStatus = paymentStatus,
+            ToothNumbers = toothNumbers
+        };
 
-            // If no appointment linked, create a walk-in appointment record
-            if (effectiveAppointmentId == null || effectiveAppointmentId == Guid.Empty)
-            {
-                var newAppointment = new Appointment
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-                    EntityId = Guid.Parse(selectedPatientId),
-                    LocationId = Guid.Parse(selectedLocationId),
-                    AppointmentDateSlot = visitDate.ToString("yyyy-MM-dd"),
-                    AppointmentTimeSlot = "Walk-in",
-                    Status = 2, // Completed
-                    DateCreated = DateTime.UtcNow,
-                    DateModified = DateTime.UtcNow
-                };
-                DbContext.Appointments.Add(newAppointment);
-                effectiveAppointmentId = newAppointment.Id;
-            }
-            else
-            {
-                // Update appointment status to completed
-                if (appointment != null)
-                {
-                    appointment.Status = 2;
-                    appointment.DateModified = DateTime.UtcNow;
-                }
-            }
+        var response = await VisitService.CreateVisitAsync(visitDto);
 
-            // Create visit record
-            var visit = new Visit
-            {
-                Id = Guid.NewGuid(),
-                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-                AppointmentId = effectiveAppointmentId,
-                LocationId = Guid.Parse(selectedLocationId),
-                DateCreated = visitDate,
-                DateModified = DateTime.UtcNow,
-                Status = 1 // Completed
-            };
-
-            DbContext.Visits.Add(visit);
-
-            // Create visit details
-            var details = new List<VisitDetail>();
-
-            if (!string.IsNullOrWhiteSpace(chiefComplaint))
-                AddVisitDetail(details, visit.Id, "ChiefComplaint", chiefComplaint);
-            AddVisitDetail(details, visit.Id, "Treatment", treatmentPerformed);
-            if (!string.IsNullOrWhiteSpace(diagnosis))
-                AddVisitDetail(details, visit.Id, "Diagnosis", diagnosis);
-            if (!string.IsNullOrWhiteSpace(clinicalNotes))
-                AddVisitDetail(details, visit.Id, "Notes", clinicalNotes);
-            if (!string.IsNullOrWhiteSpace(prescription))
-                AddVisitDetail(details, visit.Id, "Prescription", prescription);
-            if (!string.IsNullOrWhiteSpace(nextVisitAdvice))
-                AddVisitDetail(details, visit.Id, "NextVisitAdvice", nextVisitAdvice);
-            if (cost.HasValue)
-                AddVisitDetail(details, visit.Id, "Cost", cost.Value.ToString("F2"));
-            AddVisitDetail(details, visit.Id, "PaymentStatus", paymentStatus);
-            if (!string.IsNullOrWhiteSpace(toothNumbers))
-                AddVisitDetail(details, visit.Id, "ToothNumbers", toothNumbers);
-
-            DbContext.VisitDetails.AddRange(details);
-
-            await DbContext.SaveChangesAsync();
-
+        if (response.Success)
+        {
             successMessage = "Visit recorded successfully!";
-
-            // Navigate to patient detail after a brief delay
             await Task.Delay(1500);
             var targetPatientId = patient?.Id ?? Guid.Parse(selectedPatientId);
             Navigation.NavigateTo($"/patients/{targetPatientId}");
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"Error saving visit: {ex.Message}";
+            errorMessage = response.Message ?? "Error saving visit.";
             isSaving = false;
         }
-    }
-
-    private void AddVisitDetail(List<VisitDetail> details, Guid visitId, string label, string value)
-    {
-        details.Add(new VisitDetail
-        {
-            Id = Guid.NewGuid(),
-            TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-            VisitId = visitId,
-            Label = label,
-            Value1 = value,
-            DateCreated = DateTime.UtcNow
-        });
     }
 
     private void Cancel()

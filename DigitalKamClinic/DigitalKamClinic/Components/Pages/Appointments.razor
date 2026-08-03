@@ -1,9 +1,11 @@
 @page "/appointments"
 @page "/appointments/new"
-@using DigitalKamClinic.Data
-@using DigitalKamClinic.Shared.Entities
-@using Microsoft.EntityFrameworkCore
-@inject DataContext DbContext
+@using DigitalKamClinic.Services.AppointmentService
+@using DigitalKamClinic.Services.PatientService
+@using DigitalKamClinic.Services.LocationService
+@inject IAppointmentService AppointmentService
+@inject IPatientService PatientService
+@inject ILocationService LocationService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -46,7 +48,7 @@
                                             <option value="">-- Select Patient --</option>
                                             @foreach (var patient in patients)
                                             {
-                                                <option value="@patient.Id">@patient.EntityName</option>
+                                                <option value="@patient.Id">@patient.FullName</option>
                                             }
                                         </select>
                                         <small class="text-muted">
@@ -256,7 +258,7 @@
 
     private List<Appointment> allAppointments = new();
     private List<Appointment> filteredAppointments = new();
-    private List<Entity> patients = new();
+    private List<Patient> patients = new();
     private List<Location> locations = new();
     private Dictionary<Guid, string> locationNames = new();
 
@@ -289,73 +291,63 @@
 
     private async Task LoadData()
     {
-        try
+        var appointmentsResponse = await AppointmentService.GetAllAppointmentsAsync();
+        if (appointmentsResponse.Success && appointmentsResponse.Data != null)
         {
-            allAppointments = await DbContext.Appointments
-                .OrderByDescending(a => a.DateCreated)
-                .ToListAsync();
-
+            allAppointments = appointmentsResponse.Data;
             filteredAppointments = allAppointments;
-
-            patients = await DbContext.Entities
-                .OrderBy(e => e.EntityName)
-                .ToListAsync();
-
-            locations = await DbContext.Locations
-                .OrderBy(l => l.Name)
-                .ToListAsync();
-
-            foreach (var location in locations)
-            {
-                if (!string.IsNullOrEmpty(location.Name))
-                {
-                    locationNames[location.Id] = location.Name;
-                }
-            }
         }
-        catch (Exception ex)
+
+        var patientsResponse = await PatientService.GetAllPatientsAsync();
+        if (patientsResponse.Success && patientsResponse.Data != null)
         {
-            Console.WriteLine($"Error loading appointments: {ex.Message}");
+            patients = patientsResponse.Data;
+        }
+
+        var locationsResponse = await LocationService.GetAllLocationsAsync();
+        if (locationsResponse.Success && locationsResponse.Data != null)
+        {
+            locations = locationsResponse.Data;
+        }
+
+        var locationNamesResponse = await LocationService.GetLocationNamesMapAsync();
+        if (locationNamesResponse.Success && locationNamesResponse.Data != null)
+        {
+            locationNames = locationNamesResponse.Data;
         }
     }
 
-    private void FilterAppointments()
+    private async Task FilterAppointments()
     {
-        filteredAppointments = allAppointments;
-
-        if (filterDate.HasValue)
-        {
-            var dateString = filterDate.Value.ToString("yyyy-MM-dd");
-            filteredAppointments = filteredAppointments
-                .Where(a => a.AppointmentDateSlot == dateString)
-                .ToList();
-        }
-
+        Guid? locationId = null;
         if (!string.IsNullOrEmpty(filterLocationId) && Guid.TryParse(filterLocationId, out var locId))
         {
-            filteredAppointments = filteredAppointments
-                .Where(a => a.LocationId == locId)
-                .ToList();
+            locationId = locId;
         }
 
-        if (!string.IsNullOrEmpty(filterStatus) && int.TryParse(filterStatus, out var status))
+        int? status = null;
+        if (!string.IsNullOrEmpty(filterStatus) && int.TryParse(filterStatus, out var statusInt))
         {
-            filteredAppointments = filteredAppointments
-                .Where(a => a.Status == status)
-                .ToList();
+            status = statusInt;
+        }
+
+        var filterResponse = await AppointmentService.FilterAppointmentsAsync(filterDate, locationId, status);
+        if (filterResponse.Success && filterResponse.Data != null)
+        {
+            filteredAppointments = filterResponse.Data;
         }
     }
 
-    private void OnLocationFilterChanged(ChangeEventArgs e)
+    private async Task OnLocationFilterChanged(ChangeEventArgs e)
     {
         filterLocationId = e.Value?.ToString() ?? string.Empty;
-        FilterAppointments();
+        await FilterAppointments();
     }
 
-    private void OnStatusFilterChanged(ChangeEventArgs e)
+    private async Task OnStatusFilterChanged(ChangeEventArgs e)
     {
         filterStatus = e.Value?.ToString() ?? string.Empty;
-        FilterAppointments();
+        await FilterAppointments();
     }
 
     private string GetLocationName(Guid? locationId)
@@ -387,50 +379,29 @@
         isSaving = true;
         errorMessage = string.Empty;
 
-        try
+        var appointmentDto = new AppointmentCreateDTO
         {
-            var patientId = Guid.Parse(selectedPatientId);
-            var patient = await DbContext.Entities.FindAsync(patientId);
+            PatientId = Guid.Parse(selectedPatientId),
+            LocationId = Guid.Parse(selectedLocationId),
+            AppointmentDate = appointmentDate.Value,
+            AppointmentTime = appointmentTime,
+            ReasonForVisit = reasonForVisit
+        };
 
-            var appointment = new Appointment
-            {
-                Id = Guid.NewGuid(),
-                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-                EntityId = patientId,
-                LocationId = Guid.Parse(selectedLocationId),
-                AppointmentDateSlot = appointmentDate.Value.ToString("yyyy-MM-dd"),
-                AppointmentTimeSlot = appointmentTime,
-                Status = 1, // Scheduled
-                DateCreated = DateTime.UtcNow,
-                DateModified = DateTime.UtcNow,
-                Firstname = patient?.EntityName?.Split(' ').FirstOrDefault(),
-                Lastname = patient?.EntityName?.Split(' ').Skip(1).FirstOrDefault(),
-                ContactWhatsappNumber = await GetPatientDetail(patientId, "Phone"),
-                ContactEmailAddress = await GetPatientDetail(patientId, "Email")
-            };
+        var response = await AppointmentService.CreateAppointmentAsync(appointmentDto);
 
-            DbContext.Appointments.Add(appointment);
-            await DbContext.SaveChangesAsync();
-
+        if (response.Success)
+        {
             await LoadData();
             ResetForm();
             showNewForm = false;
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"Error saving appointment: {ex.Message}";
+            errorMessage = response.Message ?? "Error saving appointment.";
         }
-        finally
-        {
-            isSaving = false;
-        }
-    }
 
-    private async Task<string?> GetPatientDetail(Guid patientId, string label)
-    {
-        var detail = await DbContext.EntityDetails
-            .FirstOrDefaultAsync(ed => ed.EntityId == patientId && ed.Label == label);
-        return detail?.Value1;
+        isSaving = false;
     }
 
     private void ResetForm()

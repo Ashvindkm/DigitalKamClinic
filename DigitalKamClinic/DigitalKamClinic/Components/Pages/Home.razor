@@ -1,8 +1,12 @@
 ﻿@page "/"
-@using DigitalKamClinic.Data
-@using DigitalKamClinic.Shared.Entities
-@using Microsoft.EntityFrameworkCore
-@inject DataContext DbContext
+@using DigitalKamClinic.Services.PatientService
+@using DigitalKamClinic.Services.AppointmentService
+@using DigitalKamClinic.Services.VisitService
+@using DigitalKamClinic.Services.LocationService
+@inject IPatientService PatientService
+@inject IAppointmentService AppointmentService
+@inject IVisitService VisitService
+@inject ILocationService LocationService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 <PageTitle>Dashboard - Dental Clinic</PageTitle>
@@ -231,11 +235,11 @@
                                     <div class="d-flex align-items-center">
                                         <div class="avatar avatar-sm me-3">
                                             <span class="avatar-initial rounded-circle bg-label-primary">
-                                                @GetInitials(patient.EntityName)
+                                                @GetInitials(patient.FullName)
                                             </span>
                                         </div>
                                         <div class="flex-grow-1">
-                                            <small class="d-block">@patient.EntityName</small>
+                                            <small class="d-block">@patient.FullName</small>
                                             <small class="text-muted">@patient.DateCreated?.ToString("MMM dd")</small>
                                         </div>
                                     </div>
@@ -257,7 +261,7 @@
     private bool isLoading = true;
 
     private List<Appointment> upcomingAppointments = new();
-    private List<Entity> recentPatients = new();
+    private List<Patient> recentPatients = new();
     private Dictionary<Guid, string> locationNames = new();
 
     protected override async Task OnInitializedAsync()
@@ -268,43 +272,47 @@
 
     private async Task LoadDashboardData()
     {
-        try
+        // Load patient count
+        var patientsResponse = await PatientService.GetAllPatientsAsync();
+        if (patientsResponse.Success && patientsResponse.Data != null)
         {
-            // Load stats
-            totalPatients = await DbContext.Entities.CountAsync();
-            totalVisits = await DbContext.Visits.CountAsync();
-            totalLocations = await DbContext.Locations.CountAsync();
-
-            var today = DateTime.Today.ToString("yyyy-MM-dd");
-            todayAppointments = await DbContext.Appointments
-                .Where(a => a.AppointmentDateSlot == today && a.Status == 1)
-                .CountAsync();
-
-            // Load today's appointments
-            upcomingAppointments = await DbContext.Appointments
-                .Where(a => a.AppointmentDateSlot == today)
-                .OrderBy(a => a.AppointmentTimeSlot)
-                .ToListAsync();
-
-            // Load recent patients
-            recentPatients = await DbContext.Entities
-                .OrderByDescending(e => e.DateCreated)
-                .Take(5)
-                .ToListAsync();
-
-            // Load locations for lookup
-            var locations = await DbContext.Locations.ToListAsync();
-            foreach (var location in locations)
-            {
-                if (!string.IsNullOrEmpty(location.Name))
-                {
-                    locationNames[location.Id] = location.Name;
-                }
-            }
+            totalPatients = patientsResponse.Data.Count;
+            recentPatients = patientsResponse.Data.OrderByDescending(p => p.DateCreated).Take(5).ToList();
         }
-        catch (Exception ex)
+
+        // Load today's appointments count
+        var appointmentCountResponse = await AppointmentService.GetTodayAppointmentCountAsync();
+        if (appointmentCountResponse.Success && appointmentCountResponse.Data > 0)
         {
-            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+            todayAppointments = appointmentCountResponse.Data;
+        }
+
+        // Load today's appointments
+        var todayAppointmentsResponse = await AppointmentService.GetTodayAppointmentsAsync();
+        if (todayAppointmentsResponse.Success && todayAppointmentsResponse.Data != null)
+        {
+            upcomingAppointments = todayAppointmentsResponse.Data;
+        }
+
+        // Load total visits
+        var visitCountResponse = await VisitService.GetTotalVisitCountAsync();
+        if (visitCountResponse.Success)
+        {
+            totalVisits = visitCountResponse.Data;
+        }
+
+        // Load total locations
+        var locationCountResponse = await LocationService.GetTotalLocationCountAsync();
+        if (locationCountResponse.Success)
+        {
+            totalLocations = locationCountResponse.Data;
+        }
+
+        // Load location names map
+        var locationNamesResponse = await LocationService.GetLocationNamesMapAsync();
+        if (locationNamesResponse.Success && locationNamesResponse.Data != null)
+        {
+            locationNames = locationNamesResponse.Data;
         }
     }
 

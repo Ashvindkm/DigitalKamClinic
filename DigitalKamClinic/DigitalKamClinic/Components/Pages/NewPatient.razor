@@ -1,7 +1,8 @@
 @page "/patients/new"
-@using DigitalKamClinic.Data
+@using DigitalKamClinic.Services.PatientService
+@using DigitalKamClinic.Shared.Models
 @using DigitalKamClinic.Shared.Entities
-@inject DataContext DbContext
+@inject IPatientService PatientService
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -172,73 +173,34 @@
         isSaving = true;
         errorMessage = string.Empty;
 
-        try
+        var patientDto = new PatientCreateDTO
         {
-            // Create the patient entity
-            var patient = new Entity
-            {
-                Id = Guid.NewGuid(),
-                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"), // First tenant from seed data
-                EntityName = $"{firstName} {lastName}",
-                DateCreated = DateTime.UtcNow,
-                DateModified = DateTime.UtcNow
-            };
+            FirstName = firstName,
+            LastName = lastName,
+            DateOfBirth = dateOfBirth,
+            Gender = gender,
+            PhoneNumber = phoneNumber,
+            Email = email,
+            Address = address,
+            Allergies = allergies,
+            MedicalConditions = medicalConditions,
+            Medications = medications,
+            EmergencyContactName = emergencyContactName,
+            EmergencyContactPhone = emergencyContactPhone,
+            Notes = notes
+        };
 
-            DbContext.Entities.Add(patient);
+        var response = await PatientService.CreatePatientAsync(patientDto);
 
-            // Create entity details for all fields
-            var details = new List<EntityDetail>();
-
-            AddDetail(details, patient.Id, "FirstName", firstName);
-            AddDetail(details, patient.Id, "LastName", lastName);
-            if (dateOfBirth.HasValue)
-                AddDetail(details, patient.Id, "DateOfBirth", dateOfBirth.Value.ToString("yyyy-MM-dd"));
-            if (!string.IsNullOrWhiteSpace(gender))
-                AddDetail(details, patient.Id, "Gender", gender);
-            AddDetail(details, patient.Id, "Phone", phoneNumber);
-            if (!string.IsNullOrWhiteSpace(email))
-                AddDetail(details, patient.Id, "Email", email);
-            if (!string.IsNullOrWhiteSpace(address))
-                AddDetail(details, patient.Id, "Address", address);
-            if (!string.IsNullOrWhiteSpace(allergies))
-                AddDetail(details, patient.Id, "Allergies", allergies);
-            if (!string.IsNullOrWhiteSpace(medicalConditions))
-                AddDetail(details, patient.Id, "MedicalConditions", medicalConditions);
-            if (!string.IsNullOrWhiteSpace(medications))
-                AddDetail(details, patient.Id, "Medications", medications);
-            if (!string.IsNullOrWhiteSpace(emergencyContactName))
-                AddDetail(details, patient.Id, "EmergencyContactName", emergencyContactName);
-            if (!string.IsNullOrWhiteSpace(emergencyContactPhone))
-                AddDetail(details, patient.Id, "EmergencyContactPhone", emergencyContactPhone);
-            if (!string.IsNullOrWhiteSpace(notes))
-                AddDetail(details, patient.Id, "Notes", notes);
-
-            DbContext.EntityDetails.AddRange(details);
-
-            await DbContext.SaveChangesAsync();
-
-            // Navigate to patient detail page
-            Navigation.NavigateTo($"/patients/{patient.Id}");
+        if (response.Success && response.Data != null)
+        {
+            Navigation.NavigateTo($"/patients/{response.Data.Id}");
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"Error saving patient: {ex.Message}";
+            errorMessage = response.Message ?? "Error saving patient.";
             isSaving = false;
         }
-    }
-
-    private void AddDetail(List<EntityDetail> details, Guid entityId, string label, string value)
-    {
-        details.Add(new EntityDetail
-        {
-            Id = Guid.NewGuid(),
-            TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-            EntityId = entityId,
-            Label = label,
-            Value1 = value,
-            DateCreated = DateTime.UtcNow,
-            Display = true
-        });
     }
 
     private void Cancel()

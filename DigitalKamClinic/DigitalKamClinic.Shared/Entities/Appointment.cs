@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,8 +19,12 @@ namespace DigitalKamClinic.Shared.Entities
         public string? Lastname { get; set; }
         public string? ContactEmailAddress { get; set; }
         public string? ContactWhatsappNumber { get; set; }
-        public Guid? EntityId { get; set; }
-
+        
+        // Foreign Keys
+        public Guid? EntityId { get; set; }  // Patient reference
         public Guid? LocationId { get; set; }
+
+        // Navigation Properties
+        public virtual Location? Location { get; set; }
     }
 }

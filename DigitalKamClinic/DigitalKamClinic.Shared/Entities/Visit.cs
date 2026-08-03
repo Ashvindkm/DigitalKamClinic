@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,11 +11,16 @@ namespace DigitalKamClinic.Shared.Entities
         public Guid Id { get; set; }
         public Guid? TenantId { get; set; }
         public Guid? AppointmentId { get; set; }
+        public Guid? PatientId { get; set; }
         public Guid? WorkTypeId { get; set; }
         public Guid? LocationId { get; set; }
         public Guid? SubLocationId { get; set; }
         public DateTime? DateCreated { get; set; }
         public DateTime? DateModified { get; set; }
         public int? Status { get; set; }
+
+        // Navigation Properties
+        public virtual Appointment? Appointment { get; set; }
+        public virtual Location? Location { get; set; }
     }
 }

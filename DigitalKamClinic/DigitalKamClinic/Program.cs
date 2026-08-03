@@ -7,6 +7,10 @@ global using DigitalKamClinic.Shared.Helpers;
 global using Blazored.LocalStorage;
 using DigitalKamClinic.Components;
 using DigitalKamClinic.Services.UserAuthService;
+using DigitalKamClinic.Services.PatientService;
+using DigitalKamClinic.Services.AppointmentService;
+using DigitalKamClinic.Services.VisitService;
+using DigitalKamClinic.Services.LocationService;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +27,10 @@ builder.Services.AddDbContextFactory<DataContext>(options =>
 });
 
 builder.Services.AddScoped<IUserAuthService, UserAuthService>();
+builder.Services.AddScoped<IPatientService, PatientService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
+builder.Services.AddScoped<IVisitService, VisitService>();
+builder.Services.AddScoped<ILocationService, LocationService>();
 
 var app = builder.Build();
 

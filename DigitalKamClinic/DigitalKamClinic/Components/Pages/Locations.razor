@@ -1,8 +1,9 @@
 @page "/locations"
-@using DigitalKamClinic.Data
+@using DigitalKamClinic.Services.LocationService
+@using DigitalKamClinic.Shared.Models
 @using DigitalKamClinic.Shared.Entities
-@using Microsoft.EntityFrameworkCore
-@inject DataContext DbContext
+@inject ILocationService LocationService
+@rendermode InteractiveServer
 
 <PageTitle>Locations - Dental Clinic</PageTitle>
 
@@ -210,29 +211,18 @@
 
     private async Task LoadLocations()
     {
-        try
+        var locationsResponse = await LocationService.GetAllLocationsAsync();
+        if (locationsResponse.Success && locationsResponse.Data != null)
         {
-            locations = await DbContext.Locations
-                .OrderBy(l => l.Name)
-                .ToListAsync();
+            locations = locationsResponse.Data;
 
-            // Load address details (stored separately in a hypothetical address system or metadata)
-            // For now, we'll use Description as address placeholder
-            foreach (var location in locations)
+            // Load addresses
+            var locationIds = locations.Select(l => l.Id).ToList();
+            var addressResponse = await LocationService.GetLocationAddressesAsync(locationIds);
+            if (addressResponse.Success && addressResponse.Data != null)
             {
-                if (location.AddressId.HasValue)
-                {
-                    var address = await DbContext.Address.FindAsync(location.AddressId.Value);
-                    if (address != null)
-                    {
-                        locationAddresses[location.Id] = $"{address.StreetAddress}, {address.City}";
-                    }
-                }
+                locationAddresses = addressResponse.Data;
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading locations: {ex.Message}");
         }
     }
 
@@ -272,57 +262,39 @@
         isSaving = true;
         errorMessage = string.Empty;
 
-        try
+        var locationDto = new LocationCreateDTO
         {
-            if (editingLocation != null)
-            {
-                // Update existing
-                editingLocation.Name = locationName;
-                editingLocation.Description = locationDescription;
-                editingLocation.DateModified = DateTime.UtcNow;
-            }
-            else
-            {
-                // Create new address
-                var address = new Address
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-                    StreetAddress = locationAddress,
-                    DateCreated = DateTime.UtcNow
-                };
-                DbContext.Address.Add(address);
+            Name = locationName,
+            Description = locationDescription,
+            Address = locationAddress,
+            Phone = locationPhone,
+            Email = locationEmail,
+            OperatingHours = operatingHours
+        };
 
-                // Create new location
-                var newLocation = new Location
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
-                    Name = locationName,
-                    Description = locationDescription,
-                    AddressId = address.Id,
-                    DateCreated = DateTime.UtcNow,
-                    DateModified = DateTime.UtcNow
-                };
+        ServiceResponse<Location> response;
+        if (editingLocation != null)
+        {
+            response = await LocationService.UpdateLocationAsync(editingLocation.Id, locationDto);
+        }
+        else
+        {
+            response = await LocationService.CreateLocationAsync(locationDto);
+        }
 
-                DbContext.Locations.Add(newLocation);
-            }
-
-            await DbContext.SaveChangesAsync();
+        if (response.Success)
+        {
             await LoadLocations();
-
             ResetForm();
             showNewForm = false;
             editingLocation = null;
         }
-        catch (Exception ex)
+        else
         {
-            errorMessage = $"Error saving location: {ex.Message}";
+            errorMessage = response.Message ?? "Error saving location.";
         }
-        finally
-        {
-            isSaving = false;
-        }
+
+        isSaving = false;
     }
 
     private void ResetForm()
