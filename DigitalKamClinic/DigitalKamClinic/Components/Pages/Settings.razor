@@ -1,0 +1,76 @@
+@page "/settings"
+@rendermode InteractiveServer
+
+<PageTitle>Settings - Dental Clinic</PageTitle>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="ti ti-settings me-2"></i>System Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="ti ti-info-circle me-2"></i>
+                        Settings and configuration options will be available here.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h6 class="mb-3">Quick Links</h6>
+                            <ul class="list-group">
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="ti ti-map-pin me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>Manage Locations</strong>
+                                        <p class="mb-0 small text-muted">Configure clinic branches and locations</p>
+                                    </div>
+                                    <a href="/locations" class="btn btn-sm btn-outline-primary">Configure</a>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="ti ti-users me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>User Management</strong>
+                                        <p class="mb-0 small text-muted">Manage staff accounts and permissions</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Coming Soon</button>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="ti ti-palette me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>Appearance</strong>
+                                        <p class="mb-0 small text-muted">Customize theme and branding</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Coming Soon</button>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="ti ti-bell me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>Notifications</strong>
+                                        <p class="mb-0 small text-muted">Configure appointment reminders and alerts</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Coming Soon</button>
+                                </li>
+                                <li class="list-group-item d-flex align-items-center">
+                                    <i class="ti ti-file-invoice me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <strong>Billing & Invoicing</strong>
+                                        <p class="mb-0 small text-muted">Setup payment methods and invoice templates</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>Coming Soon</button>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Future implementation: Comprehensive settings management
+}

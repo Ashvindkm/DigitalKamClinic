@@ -1,0 +1,248 @@
+@page "/patients/new"
+@using DigitalKamClinic.Data
+@using DigitalKamClinic.Shared.Entities
+@inject DataContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>New Patient - Dental Clinic</PageTitle>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="ti ti-user-plus me-2"></i>Register New Patient
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Cancel">
+                        <i class="ti ti-x me-1"></i>Cancel
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger alert-dismissible" role="alert">
+                            <i class="ti ti-alert-circle me-2"></i>@errorMessage
+                            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                        </div>
+                    }
+
+                    <form @onsubmit="SavePatient">
+                        <!-- Patient Basic Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" @bind="firstName" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" @bind="lastName" required />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Date of Birth</label>
+                                <input type="date" class="form-control" @bind="dateOfBirth" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Gender</label>
+                                <select class="form-select" @bind="gender">
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Contact Information -->
+                        <h6 class="mb-3 mt-4">Contact Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" @bind="phoneNumber" required />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" class="form-control" @bind="email" />
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Address</label>
+                                <textarea class="form-control" rows="2" @bind="address"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Medical History -->
+                        <h6 class="mb-3 mt-4">Medical Information</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Allergies</label>
+                                <textarea class="form-control" rows="2" @bind="allergies" 
+                                         placeholder="List any known allergies..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Medical Conditions</label>
+                                <textarea class="form-control" rows="2" @bind="medicalConditions" 
+                                         placeholder="List any existing medical conditions..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Current Medications</label>
+                                <textarea class="form-control" rows="2" @bind="medications" 
+                                         placeholder="List current medications..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Emergency Contact -->
+                        <h6 class="mb-3 mt-4">Emergency Contact</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Name</label>
+                                <input type="text" class="form-control" @bind="emergencyContactName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Contact Phone</label>
+                                <input type="tel" class="form-control" @bind="emergencyContactPhone" />
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Additional Notes</label>
+                                <textarea class="form-control" rows="3" @bind="notes" 
+                                         placeholder="Any additional information..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                @if (isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <i class="ti ti-device-floppy me-1"></i>Save Patient
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ms-2" @onclick="Cancel">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string firstName = string.Empty;
+    private string lastName = string.Empty;
+    private DateTime? dateOfBirth;
+    private string gender = string.Empty;
+    private string phoneNumber = string.Empty;
+    private string email = string.Empty;
+    private string address = string.Empty;
+    private string allergies = string.Empty;
+    private string medicalConditions = string.Empty;
+    private string medications = string.Empty;
+    private string emergencyContactName = string.Empty;
+    private string emergencyContactPhone = string.Empty;
+    private string notes = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool isSaving = false;
+
+    private async Task SavePatient()
+    {
+        if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName) || string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            errorMessage = "Please fill in all required fields (First Name, Last Name, Phone Number).";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Create the patient entity
+            var patient = new Entity
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"), // First tenant from seed data
+                EntityName = $"{firstName} {lastName}",
+                DateCreated = DateTime.UtcNow,
+                DateModified = DateTime.UtcNow
+            };
+
+            DbContext.Entities.Add(patient);
+
+            // Create entity details for all fields
+            var details = new List<EntityDetail>();
+
+            AddDetail(details, patient.Id, "FirstName", firstName);
+            AddDetail(details, patient.Id, "LastName", lastName);
+            if (dateOfBirth.HasValue)
+                AddDetail(details, patient.Id, "DateOfBirth", dateOfBirth.Value.ToString("yyyy-MM-dd"));
+            if (!string.IsNullOrWhiteSpace(gender))
+                AddDetail(details, patient.Id, "Gender", gender);
+            AddDetail(details, patient.Id, "Phone", phoneNumber);
+            if (!string.IsNullOrWhiteSpace(email))
+                AddDetail(details, patient.Id, "Email", email);
+            if (!string.IsNullOrWhiteSpace(address))
+                AddDetail(details, patient.Id, "Address", address);
+            if (!string.IsNullOrWhiteSpace(allergies))
+                AddDetail(details, patient.Id, "Allergies", allergies);
+            if (!string.IsNullOrWhiteSpace(medicalConditions))
+                AddDetail(details, patient.Id, "MedicalConditions", medicalConditions);
+            if (!string.IsNullOrWhiteSpace(medications))
+                AddDetail(details, patient.Id, "Medications", medications);
+            if (!string.IsNullOrWhiteSpace(emergencyContactName))
+                AddDetail(details, patient.Id, "EmergencyContactName", emergencyContactName);
+            if (!string.IsNullOrWhiteSpace(emergencyContactPhone))
+                AddDetail(details, patient.Id, "EmergencyContactPhone", emergencyContactPhone);
+            if (!string.IsNullOrWhiteSpace(notes))
+                AddDetail(details, patient.Id, "Notes", notes);
+
+            DbContext.EntityDetails.AddRange(details);
+
+            await DbContext.SaveChangesAsync();
+
+            // Navigate to patient detail page
+            Navigation.NavigateTo($"/patients/{patient.Id}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving patient: {ex.Message}";
+            isSaving = false;
+        }
+    }
+
+    private void AddDetail(List<EntityDetail> details, Guid entityId, string label, string value)
+    {
+        details.Add(new EntityDetail
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+            EntityId = entityId,
+            Label = label,
+            Value1 = value,
+            DateCreated = DateTime.UtcNow,
+            Display = true
+        });
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo("/patients");
+    }
+}

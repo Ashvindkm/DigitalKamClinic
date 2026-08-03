@@ -5,7 +5,7 @@
             <span class="app-brand-logo demo">
                 <img src="./assets/img/branding/kam_logo.png" height="100%" />
             </span>
-            <span class="app-brand-text demo menu-text fw-bold">Medical</span>
+            <span class="app-brand-text demo menu-text fw-bold">Dental Clinic</span>
         </a>
 
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
@@ -17,41 +17,51 @@
     <div class="menu-inner-shadow"></div>
 
     <ul class="menu-inner py-1">
-        <!-- Page -->
+        <!-- Dashboard -->
         <li class="menu-item active">
             <NavLink class="menu-link" href="" Match="NavLinkMatch.All">
-                <i class="menu-icon tf-icons ti ti-smart-home"></i>
-                <div data-i18n="Page 1">Home</div>                
+                <i class="menu-icon tf-icons ti ti-dashboard"></i>
+                <div data-i18n="Dashboard">Dashboard</div>                
             </NavLink>
         </li>
+
+        <!-- Patients -->
         <li class="menu-item">
-            <NavLink class="menu-link" href="counter" Match="NavLinkMatch.All">
-                <i class="menu-icon tf-icons ti ti-app-window"></i>
-                <div data-i18n="Page 1">Counter</div>
+            <NavLink class="menu-link" href="patients" Match="NavLinkMatch.All">
+                <i class="menu-icon tf-icons ti ti-user-heart"></i>
+                <div data-i18n="Patients">Patients</div>
             </NavLink>
         </li>
-        <li class="menu-item">
-            <NavLink class="menu-link" href="weather" Match="NavLinkMatch.All">
-                <i class="menu-icon tf-icons ti ti-calendar"></i>
-                <div data-i18n="Page 1">Appointments</div>
-            </NavLink>
-        </li>      
-        <li class="menu-item">
-            <NavLink class="menu-link" href="appointments-calendar" Match="NavLinkMatch.All">
-                <i class="menu-icon tf-icons ti ti-calendar"></i>
-                <div data-i18n="Page 1">Calendar</div>
-            </NavLink>
-        </li>
+
+        <!-- Appointments -->
         <li class="menu-item">
             <NavLink class="menu-link" href="appointments" Match="NavLinkMatch.All">
-                <i class="menu-icon tf-icons ti ti-ambulance"></i>
-                <div data-i18n="Page 1">Patients</div>
+                <i class="menu-icon tf-icons ti ti-calendar-event"></i>
+                <div data-i18n="Appointments">Appointments</div>
             </NavLink>
         </li>
+
+        <!-- Calendar -->
         <li class="menu-item">
-            <NavLink class="menu-link" href="appointments" Match="NavLinkMatch.All">
+            <NavLink class="menu-link" href="calendar" Match="NavLinkMatch.All">
+                <i class="menu-icon tf-icons ti ti-calendar"></i>
+                <div data-i18n="Calendar">Calendar</div>
+            </NavLink>
+        </li>
+
+        <!-- Locations -->
+        <li class="menu-item">
+            <NavLink class="menu-link" href="locations" Match="NavLinkMatch.All">
+                <i class="menu-icon tf-icons ti ti-map-pin"></i>
+                <div data-i18n="Locations">Locations</div>
+            </NavLink>
+        </li>
+
+        <!-- Settings -->
+        <li class="menu-item">
+            <NavLink class="menu-link" href="settings" Match="NavLinkMatch.All">
                 <i class="menu-icon tf-icons ti ti-settings"></i>
-                <div data-i18n="Page 1">Settings</div>
+                <div data-i18n="Settings">Settings</div>
             </NavLink>
         </li>
     </ul>

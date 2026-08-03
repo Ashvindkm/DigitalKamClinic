@@ -1,0 +1,405 @@
+@page "/visits/new"
+@using DigitalKamClinic.Data
+@using DigitalKamClinic.Shared.Entities
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>Record Visit - Dental Clinic</PageTitle>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="ti ti-clipboard-plus me-2"></i>Record Treatment Visit
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="Cancel">
+                        <i class="ti ti-x me-1"></i>Cancel
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger alert-dismissible" role="alert">
+                                <i class="ti ti-alert-circle me-2"></i>@errorMessage
+                                <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success alert-dismissible" role="alert">
+                                <i class="ti ti-circle-check me-2"></i>@successMessage
+                            </div>
+                        }
+
+                        <!-- Patient Info Card -->
+                        @if (patient != null)
+                        {
+                            <div class="alert alert-info mb-4">
+                                <div class="d-flex align-items-center">
+                                    <i class="ti ti-user-heart me-3" style="font-size: 2rem;"></i>
+                                    <div>
+                                        <h6 class="mb-1">Patient: <strong>@patient.EntityName</strong></h6>
+                                        @if (appointment != null)
+                                        {
+                                            <small class="text-muted">
+                                                Appointment: @appointment.AppointmentDateSlot at @appointment.AppointmentTimeSlot
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <form @onsubmit="SaveVisit">
+                            <!-- Visit Information -->
+                            <div class="row mb-3">
+                                @if (AppointmentId == null || AppointmentId == Guid.Empty)
+                                {
+                                    <div class="col-md-6">
+                                        <label class="form-label">Patient <span class="text-danger">*</span></label>
+                                        <select class="form-select" value="@selectedPatientId" @onchange="OnPatientChanged" required>
+                                            <option value="">-- Select Patient --</option>
+                                            @foreach (var p in patients)
+                                            {
+                                                <option value="@p.Id">@p.EntityName</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Visit Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" @bind="visitDate" 
+                                           max="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Location <span class="text-danger">*</span></label>
+                                    <select class="form-select" @bind="selectedLocationId" required>
+                                        <option value="">-- Select Location --</option>
+                                        @foreach (var location in locations)
+                                        {
+                                            <option value="@location.Id">@location.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Chief Complaint -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-alert-circle me-2"></i>Chief Complaint / Reason for Visit</h6>
+                                <textarea class="form-control" rows="2" @bind="chiefComplaint" 
+                                         placeholder="Why did the patient come in today?"></textarea>
+                            </div>
+
+                            <!-- Treatment Performed -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-dental me-2"></i>Treatment Performed <span class="text-danger">*</span></h6>
+                                <textarea class="form-control" rows="4" @bind="treatmentPerformed" required
+                                         placeholder="Describe the treatment procedures performed (e.g., cleaning, filling, root canal, extraction, etc.)"></textarea>
+                            </div>
+
+                            <!-- Diagnosis -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-stethoscope me-2"></i>Diagnosis</h6>
+                                <textarea class="form-control" rows="2" @bind="diagnosis" 
+                                         placeholder="Enter diagnosis or findings"></textarea>
+                            </div>
+
+                            <!-- Treatment Notes -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-notes me-2"></i>Clinical Notes</h6>
+                                <textarea class="form-control" rows="3" @bind="clinicalNotes" 
+                                         placeholder="Additional notes, observations, or remarks"></textarea>
+                            </div>
+
+                            <!-- Prescription / Medications -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-pill me-2"></i>Prescription / Medications</h6>
+                                <textarea class="form-control" rows="3" @bind="prescription" 
+                                         placeholder="List medications prescribed with dosage and instructions"></textarea>
+                            </div>
+
+                            <!-- Next Visit Advice -->
+                            <div class="mb-4">
+                                <div class="card border-primary">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            <i class="ti ti-calendar-check me-2"></i>Advice for Next Visit / Follow-up
+                                        </h6>
+                                        <textarea class="form-control" rows="3" @bind="nextVisitAdvice" 
+                                                 placeholder="What should the patient do next? When should they return? Any special instructions?"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cost/Payment -->
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Procedure Cost</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">₹</span>
+                                        <input type="number" class="form-control" @bind="cost" step="0.01" 
+                                               placeholder="0.00" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Payment Status</label>
+                                    <select class="form-select" @bind="paymentStatus">
+                                        <option value="Paid">Paid</option>
+                                        <option value="Partial">Partial</option>
+                                        <option value="Pending">Pending</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Dental Chart / Tooth Numbers -->
+                            <div class="mb-4">
+                                <h6><i class="ti ti-tooth me-2"></i>Tooth Numbers / Areas Treated</h6>
+                                <input type="text" class="form-control" @bind="toothNumbers" 
+                                       placeholder="e.g., 14, 15, 16 or Upper right molars" />
+                            </div>
+
+                            <div class="mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-primary btn-lg" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <i class="ti ti-device-floppy me-1"></i>Save Visit Record
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-lg ms-2" @onclick="Cancel">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? AppointmentId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public Guid? PatientId { get; set; }
+
+    private Entity? patient;
+    private Appointment? appointment;
+    private List<Entity> patients = new();
+    private List<Location> locations = new();
+
+    private string selectedPatientId = string.Empty;
+    private string selectedLocationId = string.Empty;
+    private DateTime visitDate = DateTime.Today;
+    private string chiefComplaint = string.Empty;
+    private string treatmentPerformed = string.Empty;
+    private string diagnosis = string.Empty;
+    private string clinicalNotes = string.Empty;
+    private string prescription = string.Empty;
+    private string nextVisitAdvice = string.Empty;
+    private decimal? cost;
+    private string paymentStatus = "Paid";
+    private string toothNumbers = string.Empty;
+
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isLoading = true;
+    private bool isSaving = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        isLoading = false;
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            locations = await DbContext.Locations.OrderBy(l => l.Name).ToListAsync();
+            patients = await DbContext.Entities.OrderBy(e => e.EntityName).ToListAsync();
+
+            if (AppointmentId.HasValue && AppointmentId != Guid.Empty)
+            {
+                appointment = await DbContext.Appointments.FindAsync(AppointmentId.Value);
+                if (appointment != null)
+                {
+                    selectedLocationId = appointment.LocationId?.ToString() ?? string.Empty;
+                    if (appointment.EntityId.HasValue)
+                    {
+                        patient = await DbContext.Entities.FindAsync(appointment.EntityId.Value);
+                        selectedPatientId = appointment.EntityId.Value.ToString();
+                    }
+                }
+            }
+            else if (PatientId.HasValue && PatientId != Guid.Empty)
+            {
+                patient = await DbContext.Entities.FindAsync(PatientId.Value);
+                selectedPatientId = PatientId.Value.ToString();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+    }
+
+    private async Task OnPatientChanged(ChangeEventArgs e)
+    {
+        selectedPatientId = e.Value?.ToString() ?? string.Empty;
+        if (Guid.TryParse(selectedPatientId, out var patientId))
+        {
+            patient = await DbContext.Entities.FindAsync(patientId);
+        }
+    }
+
+    private async Task SaveVisit()
+    {
+        if (string.IsNullOrWhiteSpace(treatmentPerformed))
+        {
+            errorMessage = "Please describe the treatment performed.";
+            return;
+        }
+
+        if ((AppointmentId == null || AppointmentId == Guid.Empty) && string.IsNullOrEmpty(selectedPatientId))
+        {
+            errorMessage = "Please select a patient.";
+            return;
+        }
+
+        if (string.IsNullOrEmpty(selectedLocationId))
+        {
+            errorMessage = "Please select a location.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            Guid? effectiveAppointmentId = AppointmentId;
+
+            // If no appointment linked, create a walk-in appointment record
+            if (effectiveAppointmentId == null || effectiveAppointmentId == Guid.Empty)
+            {
+                var newAppointment = new Appointment
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+                    EntityId = Guid.Parse(selectedPatientId),
+                    LocationId = Guid.Parse(selectedLocationId),
+                    AppointmentDateSlot = visitDate.ToString("yyyy-MM-dd"),
+                    AppointmentTimeSlot = "Walk-in",
+                    Status = 2, // Completed
+                    DateCreated = DateTime.UtcNow,
+                    DateModified = DateTime.UtcNow
+                };
+                DbContext.Appointments.Add(newAppointment);
+                effectiveAppointmentId = newAppointment.Id;
+            }
+            else
+            {
+                // Update appointment status to completed
+                if (appointment != null)
+                {
+                    appointment.Status = 2;
+                    appointment.DateModified = DateTime.UtcNow;
+                }
+            }
+
+            // Create visit record
+            var visit = new Visit
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+                AppointmentId = effectiveAppointmentId,
+                LocationId = Guid.Parse(selectedLocationId),
+                DateCreated = visitDate,
+                DateModified = DateTime.UtcNow,
+                Status = 1 // Completed
+            };
+
+            DbContext.Visits.Add(visit);
+
+            // Create visit details
+            var details = new List<VisitDetail>();
+
+            if (!string.IsNullOrWhiteSpace(chiefComplaint))
+                AddVisitDetail(details, visit.Id, "ChiefComplaint", chiefComplaint);
+            AddVisitDetail(details, visit.Id, "Treatment", treatmentPerformed);
+            if (!string.IsNullOrWhiteSpace(diagnosis))
+                AddVisitDetail(details, visit.Id, "Diagnosis", diagnosis);
+            if (!string.IsNullOrWhiteSpace(clinicalNotes))
+                AddVisitDetail(details, visit.Id, "Notes", clinicalNotes);
+            if (!string.IsNullOrWhiteSpace(prescription))
+                AddVisitDetail(details, visit.Id, "Prescription", prescription);
+            if (!string.IsNullOrWhiteSpace(nextVisitAdvice))
+                AddVisitDetail(details, visit.Id, "NextVisitAdvice", nextVisitAdvice);
+            if (cost.HasValue)
+                AddVisitDetail(details, visit.Id, "Cost", cost.Value.ToString("F2"));
+            AddVisitDetail(details, visit.Id, "PaymentStatus", paymentStatus);
+            if (!string.IsNullOrWhiteSpace(toothNumbers))
+                AddVisitDetail(details, visit.Id, "ToothNumbers", toothNumbers);
+
+            DbContext.VisitDetails.AddRange(details);
+
+            await DbContext.SaveChangesAsync();
+
+            successMessage = "Visit recorded successfully!";
+
+            // Navigate to patient detail after a brief delay
+            await Task.Delay(1500);
+            var targetPatientId = patient?.Id ?? Guid.Parse(selectedPatientId);
+            Navigation.NavigateTo($"/patients/{targetPatientId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving visit: {ex.Message}";
+            isSaving = false;
+        }
+    }
+
+    private void AddVisitDetail(List<VisitDetail> details, Guid visitId, string label, string value)
+    {
+        details.Add(new VisitDetail
+        {
+            Id = Guid.NewGuid(),
+            TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+            VisitId = visitId,
+            Label = label,
+            Value1 = value,
+            DateCreated = DateTime.UtcNow
+        });
+    }
+
+    private void Cancel()
+    {
+        if (patient != null)
+        {
+            Navigation.NavigateTo($"/patients/{patient.Id}");
+        }
+        else
+        {
+            Navigation.NavigateTo("/appointments");
+        }
+    }
+}

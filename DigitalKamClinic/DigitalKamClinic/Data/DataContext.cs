@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Data;
 using System.Text.RegularExpressions;
+using DigitalKamClinic.Shared.Entities;
+using DigitalKamClinic.Shared.Helpers;
+using DigitalKamClinic.Shared.Enums;
 
 namespace DigitalKamClinic.Data
 {
@@ -46,16 +49,16 @@ namespace DigitalKamClinic.Data
         public DbSet<Member> Members { get; set; }
         public DbSet<Address> Address { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
-       // public DbSet<ConfigEntity> ConfigEntities { get; set; }
-        //public DbSet<ConfigEntityDetail> ConfigEntityDetails { get; set; }
-        //public DbSet<ConfigWorkType> ConfigWorkTypes { get; set; }
-        //public DbSet<ConfigWorkTypeInput> ConfigWorkTypeInputs { get; set; }
-       // public DbSet<Entity> Entities { get; set; }
-       // public DbSet<EntityDetail> EntityDetails { get; set; }
-        //public DbSet<Location> Locations { get; set; }
-        //public DbSet<SubLocation> SubLocations { get; set; }
-        //public DbSet<Visit> Visits { get; set; }
-        //public DbSet<VisitDetail> VisitDetails { get; set; }
+        public DbSet<ConfigEntity> ConfigEntities { get; set; }
+        public DbSet<ConfigEntityDetail> ConfigEntityDetails { get; set; }
+        public DbSet<ConfigWorkType> ConfigWorkTypes { get; set; }
+        public DbSet<ConfigWorkTypeInput> ConfigWorkTypeInputs { get; set; }
+        public DbSet<Entity> Entities { get; set; }
+        public DbSet<EntityDetail> EntityDetails { get; set; }
+        public DbSet<Location> Locations { get; set; }
+        public DbSet<SubLocation> SubLocations { get; set; }
+        public DbSet<Visit> Visits { get; set; }
+        public DbSet<VisitDetail> VisitDetails { get; set; }
     }
 
 }

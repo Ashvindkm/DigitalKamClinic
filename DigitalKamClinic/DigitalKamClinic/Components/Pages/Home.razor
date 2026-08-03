@@ -1,7 +1,326 @@
 ﻿@page "/"
+@using DigitalKamClinic.Data
+@using DigitalKamClinic.Shared.Entities
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+<PageTitle>Dashboard - Dental Clinic</PageTitle>
 
-<PageTitle>Home</PageTitle>
+<div class="container-xxl flex-grow-1 container-p-y">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h4 class="text-white mb-2">
+                        <i class="ti ti-dental me-2"></i>Welcome to Dental Clinic Management System
+                    </h4>
+                    <p class="mb-0">Today is @DateTime.Now.ToString("dddd, MMMM dd, yyyy")</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h1>Hello, world!</h1>
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h3 class="mb-1">@totalPatients</h3>
+                            <p class="text-muted mb-0">Total Patients</p>
+                        </div>
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-primary rounded">
+                                <i class="ti ti-user-heart ti-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-Welcome to your new app.
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h3 class="mb-1">@todayAppointments</h3>
+                            <p class="text-muted mb-0">Today's Appointments</p>
+                        </div>
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-success rounded">
+                                <i class="ti ti-calendar-check ti-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h3 class="mb-1">@totalVisits</h3>
+                            <p class="text-muted mb-0">Total Visits</p>
+                        </div>
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-info rounded">
+                                <i class="ti ti-clipboard-check ti-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h3 class="mb-1">@totalLocations</h3>
+                            <p class="text-muted mb-0">Clinic Locations</p>
+                        </div>
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-warning rounded">
+                                <i class="ti ti-map-pin ti-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="ti ti-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <button class="btn btn-primary w-100 py-3" @onclick='() => Navigation.NavigateTo("/patients/new")'>
+                                <i class="ti ti-user-plus d-block mb-2" style="font-size: 2rem;"></i>
+                                Register Patient
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <button class="btn btn-success w-100 py-3" @onclick='() => Navigation.NavigateTo("/appointments/new")'>
+                                <i class="ti ti-calendar-plus d-block mb-2" style="font-size: 2rem;"></i>
+                                Schedule Appointment
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <button class="btn btn-info w-100 py-3" @onclick='() => Navigation.NavigateTo("/visits/new")'>
+                                <i class="ti ti-clipboard-plus d-block mb-2" style="font-size: 2rem;"></i>
+                                Record Visit
+                            </button>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <button class="btn btn-warning w-100 py-3" @onclick='() => Navigation.NavigateTo("/patients")'>
+                                <i class="ti ti-users d-block mb-2" style="font-size: 2rem;"></i>
+                                View Patients
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Appointments -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="ti ti-calendar-event me-2"></i>Today's Appointments</h5>
+                    <a href="/appointments" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (upcomingAppointments == null || !upcomingAppointments.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-calendar-off d-block mb-2" style="font-size: 3rem;"></i>
+                            <p>No appointments scheduled for today</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Patient</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var appointment in upcomingAppointments.Take(5))
+                                    {
+                                        <tr>
+                                            <td><strong>@appointment.AppointmentTimeSlot</strong></td>
+                                            <td>@appointment.Firstname @appointment.Lastname</td>
+                                            <td><small class="text-muted">@GetLocationName(appointment.LocationId)</small></td>
+                                            <td>
+                                                @if (appointment.Status == 1)
+                                                {
+                                                    <span class="badge bg-primary">Scheduled</span>
+                                                }
+                                                else if (appointment.Status == 2)
+                                                {
+                                                    <span class="badge bg-success">Completed</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Patients -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="ti ti-users me-2"></i>Recent Patients</h5>
+                    <a href="/patients" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (recentPatients == null || !recentPatients.Any())
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-user-off d-block mb-2" style="font-size: 2rem;"></i>
+                            <p class="small">No patients registered yet</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush">
+                            @foreach (var patient in recentPatients.Take(5))
+                            {
+                                <a href="/patients/@patient.Id" class="list-group-item list-group-item-action">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar avatar-sm me-3">
+                                            <span class="avatar-initial rounded-circle bg-label-primary">
+                                                @GetInitials(patient.EntityName)
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <small class="d-block">@patient.EntityName</small>
+                                            <small class="text-muted">@patient.DateCreated?.ToString("MMM dd")</small>
+                                        </div>
+                                    </div>
+                                </a>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private int totalPatients = 0;
+    private int todayAppointments = 0;
+    private int totalVisits = 0;
+    private int totalLocations = 0;
+    private bool isLoading = true;
+
+    private List<Appointment> upcomingAppointments = new();
+    private List<Entity> recentPatients = new();
+    private Dictionary<Guid, string> locationNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+        isLoading = false;
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Load stats
+            totalPatients = await DbContext.Entities.CountAsync();
+            totalVisits = await DbContext.Visits.CountAsync();
+            totalLocations = await DbContext.Locations.CountAsync();
+
+            var today = DateTime.Today.ToString("yyyy-MM-dd");
+            todayAppointments = await DbContext.Appointments
+                .Where(a => a.AppointmentDateSlot == today && a.Status == 1)
+                .CountAsync();
+
+            // Load today's appointments
+            upcomingAppointments = await DbContext.Appointments
+                .Where(a => a.AppointmentDateSlot == today)
+                .OrderBy(a => a.AppointmentTimeSlot)
+                .ToListAsync();
+
+            // Load recent patients
+            recentPatients = await DbContext.Entities
+                .OrderByDescending(e => e.DateCreated)
+                .Take(5)
+                .ToListAsync();
+
+            // Load locations for lookup
+            var locations = await DbContext.Locations.ToListAsync();
+            foreach (var location in locations)
+            {
+                if (!string.IsNullOrEmpty(location.Name))
+                {
+                    locationNames[location.Id] = location.Name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+    }
+
+    private string GetLocationName(Guid? locationId)
+    {
+        if (!locationId.HasValue) return "N/A";
+        return locationNames.TryGetValue(locationId.Value, out var name) ? name : "Unknown";
+    }
+
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "??";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpper();
+    }
+}
+

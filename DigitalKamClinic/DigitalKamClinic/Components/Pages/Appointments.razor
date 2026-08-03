@@ -1,0 +1,455 @@
+@page "/appointments"
+@page "/appointments/new"
+@using DigitalKamClinic.Data
+@using DigitalKamClinic.Shared.Entities
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Appointments - Dental Clinic</PageTitle>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="ti ti-calendar-event me-2"></i>Appointments
+                    </h5>
+                    <button type="button" class="btn btn-primary" @onclick="ShowNewAppointmentForm">
+                        <i class="ti ti-plus me-1"></i>New Appointment
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (showNewForm)
+                    {
+                        <!-- New Appointment Form -->
+                        <div class="border rounded p-4 mb-4 bg-light">
+                            <h6 class="mb-3">
+                                <i class="ti ti-calendar-plus me-2"></i>Schedule New Appointment
+                            </h6>
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger alert-dismissible" role="alert">
+                                    <i class="ti ti-alert-circle me-2"></i>@errorMessage
+                                    <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                                </div>
+                            }
+
+                            <form @onsubmit="SaveAppointment">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Patient <span class="text-danger">*</span></label>
+                                        <select class="form-select" @bind="selectedPatientId" required>
+                                            <option value="">-- Select Patient --</option>
+                                            @foreach (var patient in patients)
+                                            {
+                                                <option value="@patient.Id">@patient.EntityName</option>
+                                            }
+                                        </select>
+                                        <small class="text-muted">
+                                            Don't see the patient? <a href="/patients/new">Register new patient</a>
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Location <span class="text-danger">*</span></label>
+                                        <select class="form-select" @bind="selectedLocationId" required>
+                                            <option value="">-- Select Location --</option>
+                                            @foreach (var location in locations)
+                                            {
+                                                <option value="@location.Id">@location.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Date <span class="text-danger">*</span></label>
+                                        <input type="date" class="form-control" @bind="appointmentDate" 
+                                               min="@DateTime.Today.ToString("yyyy-MM-dd")" required />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Time Slot <span class="text-danger">*</span></label>
+                                        <select class="form-select" @bind="appointmentTime" required>
+                                            <option value="">-- Select Time --</option>
+                                            <option value="08:00 AM">08:00 AM</option>
+                                            <option value="09:00 AM">09:00 AM</option>
+                                            <option value="10:00 AM">10:00 AM</option>
+                                            <option value="11:00 AM">11:00 AM</option>
+                                            <option value="12:00 PM">12:00 PM</option>
+                                            <option value="01:00 PM">01:00 PM</option>
+                                            <option value="02:00 PM">02:00 PM</option>
+                                            <option value="03:00 PM">03:00 PM</option>
+                                            <option value="04:00 PM">04:00 PM</option>
+                                            <option value="05:00 PM">05:00 PM</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Reason for Visit</label>
+                                        <textarea class="form-control" rows="2" @bind="reasonForVisit" 
+                                                 placeholder="Checkup, cleaning, filling, etc."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        }
+                                        <i class="ti ti-check me-1"></i>Schedule Appointment
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelNewForm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+
+                    <!-- Filter Bar -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small">Filter by Date</label>
+                            <input type="date" class="form-control" @bind="filterDate" @bind:event="oninput" 
+                                   @onchange="FilterAppointments" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Filter by Location</label>
+                            <select class="form-select" value="@filterLocationId" @onchange="OnLocationFilterChanged">
+                                <option value="">All Locations</option>
+                                @foreach (var location in locations)
+                                {
+                                    <option value="@location.Id">@location.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Filter by Status</label>
+                            <select class="form-select" value="@filterStatus" @onchange="OnStatusFilterChanged">
+                                <option value="">All</option>
+                                <option value="1">Scheduled</option>
+                                <option value="2">Completed</option>
+                                <option value="3">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (filteredAppointments == null || !filteredAppointments.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="ti ti-info-circle me-2"></i>No appointments found. Schedule your first appointment above.
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Appointments Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Patient</th>
+                                        <th>Contact</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var appointment in filteredAppointments.OrderBy(a => a.AppointmentDateSlot).ThenBy(a => a.AppointmentTimeSlot))
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong>@appointment.AppointmentDateSlot</strong><br />
+                                                <small class="text-muted">@appointment.AppointmentTimeSlot</small>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(appointment.Firstname) || !string.IsNullOrEmpty(appointment.Lastname))
+                                                {
+                                                    <span>@appointment.Firstname @appointment.Lastname</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">Patient TBD</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(appointment.ContactWhatsappNumber))
+                                                {
+                                                    <i class="ti ti-phone me-1"></i><span>@appointment.ContactWhatsappNumber</span>
+                                                }
+                                                @if (!string.IsNullOrEmpty(appointment.ContactEmailAddress))
+                                                {
+                                                    <br /><i class="ti ti-mail me-1"></i><small>@appointment.ContactEmailAddress</small>
+                                                }
+                                            </td>
+                                            <td>@GetLocationName(appointment.LocationId)</td>
+                                            <td>
+                                                @switch (appointment.Status)
+                                                {
+                                                    case 1:
+                                                        <span class="badge bg-primary">Scheduled</span>
+                                                        break;
+                                                    case 2:
+                                                        <span class="badge bg-success">Completed</span>
+                                                        break;
+                                                    case 3:
+                                                        <span class="badge bg-danger">Cancelled</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-secondary">Unknown</span>
+                                                        break;
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (appointment.EntityId.HasValue)
+                                                {
+                                                    <button class="btn btn-sm btn-icon btn-outline-primary" 
+                                                            @onclick="() => ViewPatient(appointment.EntityId.Value)"
+                                                            title="View Patient">
+                                                        <i class="ti ti-user"></i>
+                                                    </button>
+                                                }
+                                                @if (appointment.Status == 1)
+                                                {
+                                                    <button class="btn btn-sm btn-icon btn-outline-success ms-1" 
+                                                            @onclick="() => RecordVisit(appointment.Id)"
+                                                            title="Record Visit">
+                                                        <i class="ti ti-clipboard-check"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-3">
+                            <p class="text-muted">Showing @filteredAppointments.Count() of @allAppointments.Count() appointments</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public Guid? PatientId { get; set; }
+
+    private List<Appointment> allAppointments = new();
+    private List<Appointment> filteredAppointments = new();
+    private List<Entity> patients = new();
+    private List<Location> locations = new();
+    private Dictionary<Guid, string> locationNames = new();
+
+    private bool showNewForm = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+
+    private string selectedPatientId = string.Empty;
+    private string selectedLocationId = string.Empty;
+    private DateTime? appointmentDate;
+    private string appointmentTime = string.Empty;
+    private string reasonForVisit = string.Empty;
+
+    private DateTime? filterDate;
+    private string filterLocationId = string.Empty;
+    private string filterStatus = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        isLoading = false;
+
+        if (PatientId.HasValue)
+        {
+            selectedPatientId = PatientId.Value.ToString();
+            showNewForm = true;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            allAppointments = await DbContext.Appointments
+                .OrderByDescending(a => a.DateCreated)
+                .ToListAsync();
+
+            filteredAppointments = allAppointments;
+
+            patients = await DbContext.Entities
+                .OrderBy(e => e.EntityName)
+                .ToListAsync();
+
+            locations = await DbContext.Locations
+                .OrderBy(l => l.Name)
+                .ToListAsync();
+
+            foreach (var location in locations)
+            {
+                if (!string.IsNullOrEmpty(location.Name))
+                {
+                    locationNames[location.Id] = location.Name;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading appointments: {ex.Message}");
+        }
+    }
+
+    private void FilterAppointments()
+    {
+        filteredAppointments = allAppointments;
+
+        if (filterDate.HasValue)
+        {
+            var dateString = filterDate.Value.ToString("yyyy-MM-dd");
+            filteredAppointments = filteredAppointments
+                .Where(a => a.AppointmentDateSlot == dateString)
+                .ToList();
+        }
+
+        if (!string.IsNullOrEmpty(filterLocationId) && Guid.TryParse(filterLocationId, out var locId))
+        {
+            filteredAppointments = filteredAppointments
+                .Where(a => a.LocationId == locId)
+                .ToList();
+        }
+
+        if (!string.IsNullOrEmpty(filterStatus) && int.TryParse(filterStatus, out var status))
+        {
+            filteredAppointments = filteredAppointments
+                .Where(a => a.Status == status)
+                .ToList();
+        }
+    }
+
+    private void OnLocationFilterChanged(ChangeEventArgs e)
+    {
+        filterLocationId = e.Value?.ToString() ?? string.Empty;
+        FilterAppointments();
+    }
+
+    private void OnStatusFilterChanged(ChangeEventArgs e)
+    {
+        filterStatus = e.Value?.ToString() ?? string.Empty;
+        FilterAppointments();
+    }
+
+    private string GetLocationName(Guid? locationId)
+    {
+        if (!locationId.HasValue) return "N/A";
+        return locationNames.TryGetValue(locationId.Value, out var name) ? name : "Unknown";
+    }
+
+    private void ShowNewAppointmentForm()
+    {
+        showNewForm = true;
+    }
+
+    private void CancelNewForm()
+    {
+        showNewForm = false;
+        ResetForm();
+    }
+
+    private async Task SaveAppointment()
+    {
+        if (string.IsNullOrEmpty(selectedPatientId) || string.IsNullOrEmpty(selectedLocationId) || 
+            !appointmentDate.HasValue || string.IsNullOrEmpty(appointmentTime))
+        {
+            errorMessage = "Please fill in all required fields.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var patientId = Guid.Parse(selectedPatientId);
+            var patient = await DbContext.Entities.FindAsync(patientId);
+
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+                EntityId = patientId,
+                LocationId = Guid.Parse(selectedLocationId),
+                AppointmentDateSlot = appointmentDate.Value.ToString("yyyy-MM-dd"),
+                AppointmentTimeSlot = appointmentTime,
+                Status = 1, // Scheduled
+                DateCreated = DateTime.UtcNow,
+                DateModified = DateTime.UtcNow,
+                Firstname = patient?.EntityName?.Split(' ').FirstOrDefault(),
+                Lastname = patient?.EntityName?.Split(' ').Skip(1).FirstOrDefault(),
+                ContactWhatsappNumber = await GetPatientDetail(patientId, "Phone"),
+                ContactEmailAddress = await GetPatientDetail(patientId, "Email")
+            };
+
+            DbContext.Appointments.Add(appointment);
+            await DbContext.SaveChangesAsync();
+
+            await LoadData();
+            ResetForm();
+            showNewForm = false;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving appointment: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task<string?> GetPatientDetail(Guid patientId, string label)
+    {
+        var detail = await DbContext.EntityDetails
+            .FirstOrDefaultAsync(ed => ed.EntityId == patientId && ed.Label == label);
+        return detail?.Value1;
+    }
+
+    private void ResetForm()
+    {
+        selectedPatientId = string.Empty;
+        selectedLocationId = string.Empty;
+        appointmentDate = null;
+        appointmentTime = string.Empty;
+        reasonForVisit = string.Empty;
+        errorMessage = string.Empty;
+    }
+
+    private void ViewPatient(Guid patientId)
+    {
+        Navigation.NavigateTo($"/patients/{patientId}");
+    }
+
+    private void RecordVisit(Guid appointmentId)
+    {
+        Navigation.NavigateTo($"/visits/new?appointmentId={appointmentId}");
+    }
+}

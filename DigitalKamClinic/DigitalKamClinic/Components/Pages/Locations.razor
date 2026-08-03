@@ -1,0 +1,351 @@
+@page "/locations"
+@using DigitalKamClinic.Data
+@using DigitalKamClinic.Shared.Entities
+@using Microsoft.EntityFrameworkCore
+@inject DataContext DbContext
+
+<PageTitle>Locations - Dental Clinic</PageTitle>
+
+<div class="container-xxl flex-grow-1 container-p-y">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="ti ti-map-pin me-2"></i>Clinic Locations
+                    </h5>
+                    <button type="button" class="btn btn-primary" @onclick="ShowNewLocationForm">
+                        <i class="ti ti-plus me-1"></i>Add Location
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (showNewForm || editingLocation != null)
+                    {
+                        <!-- Location Form -->
+                        <div class="border rounded p-4 mb-4 bg-light">
+                            <h6 class="mb-3">
+                                <i class="ti ti-building me-2"></i>@(editingLocation != null ? "Edit Location" : "New Location")
+                            </h6>
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger alert-dismissible" role="alert">
+                                    <i class="ti ti-alert-circle me-2"></i>@errorMessage
+                                    <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+                                </div>
+                            }
+
+                            <form @onsubmit="SaveLocation">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Location Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" @bind="locationName" required 
+                                               placeholder="e.g., Main Clinic, Downtown Branch" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Location Code</label>
+                                        <input type="text" class="form-control" @bind="locationCode" 
+                                               placeholder="e.g., MC01, DB01" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Description</label>
+                                        <textarea class="form-control" rows="2" @bind="locationDescription" 
+                                                 placeholder="Brief description of this location"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Address <span class="text-danger">*</span></label>
+                                        <textarea class="form-control" rows="2" @bind="locationAddress" required
+                                                 placeholder="Full address including street, city, state, postal code"></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Contact Phone</label>
+                                        <input type="tel" class="form-control" @bind="locationPhone" 
+                                               placeholder="Clinic phone number" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Contact Email</label>
+                                        <input type="email" class="form-control" @bind="locationEmail" 
+                                               placeholder="clinic@example.com" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Operating Hours</label>
+                                        <input type="text" class="form-control" @bind="operatingHours" 
+                                               placeholder="e.g., Mon-Fri: 9AM-6PM, Sat: 9AM-2PM" />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Status</label>
+                                        <select class="form-select" @bind="isActive">
+                                            <option value="true">Active</option>
+                                            <option value="false">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                        @if (isSaving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        }
+                                        <i class="ti ti-device-floppy me-1"></i>@(editingLocation != null ? "Update" : "Save") Location
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary ms-2" @onclick="CancelForm">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else if (locations == null || !locations.Any())
+                    {
+                        <div class="alert alert-info">
+                            <i class="ti ti-info-circle me-2"></i>No locations configured. Add your first clinic location above.
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Locations Grid -->
+                        <div class="row">
+                            @foreach (var location in locations)
+                            {
+                                var address = GetLocationAddress(location.Id);
+                                <div class="col-md-6 col-lg-4 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                                <h5 class="card-title mb-0">@location.Name</h5>
+                                                <span class="badge bg-success">Active</span>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(location.Description))
+                                            {
+                                                <p class="card-text text-muted small">@location.Description</p>
+                                            }
+
+                                            @if (address != null)
+                                            {
+                                                <div class="mb-2">
+                                                    <small class="text-muted">
+                                                        <i class="ti ti-map-pin me-1"></i>@address
+                                                    </small>
+                                                </div>
+                                            }
+
+                                            <div class="mt-3 d-flex gap-2">
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        @onclick="() => EditLocation(location)">
+                                                    <i class="ti ti-edit"></i> Edit
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-info" 
+                                                        @onclick="() => ViewLocationStats(location.Id)">
+                                                    <i class="ti ti-chart-bar"></i> Stats
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer border-top">
+                                            <small class="text-muted">
+                                                Added @(location.DateCreated?.ToString("MMM dd, yyyy") ?? "N/A")
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-3">
+                            <p class="text-muted">Total Locations: @locations.Count()</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Location> locations = new();
+    private Dictionary<Guid, string> locationAddresses = new();
+    private Location? editingLocation;
+    private bool showNewForm = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+
+    // Form fields
+    private string locationName = string.Empty;
+    private string locationCode = string.Empty;
+    private string locationDescription = string.Empty;
+    private string locationAddress = string.Empty;
+    private string locationPhone = string.Empty;
+    private string locationEmail = string.Empty;
+    private string operatingHours = string.Empty;
+    private bool isActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLocations();
+        isLoading = false;
+    }
+
+    private async Task LoadLocations()
+    {
+        try
+        {
+            locations = await DbContext.Locations
+                .OrderBy(l => l.Name)
+                .ToListAsync();
+
+            // Load address details (stored separately in a hypothetical address system or metadata)
+            // For now, we'll use Description as address placeholder
+            foreach (var location in locations)
+            {
+                if (location.AddressId.HasValue)
+                {
+                    var address = await DbContext.Address.FindAsync(location.AddressId.Value);
+                    if (address != null)
+                    {
+                        locationAddresses[location.Id] = $"{address.StreetAddress}, {address.City}";
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading locations: {ex.Message}");
+        }
+    }
+
+    private void ShowNewLocationForm()
+    {
+        showNewForm = true;
+        editingLocation = null;
+        ResetForm();
+    }
+
+    private void EditLocation(Location location)
+    {
+        editingLocation = location;
+        showNewForm = false;
+
+        locationName = location.Name ?? string.Empty;
+        locationDescription = location.Description ?? string.Empty;
+        locationAddress = GetLocationAddress(location.Id) ?? string.Empty;
+        // Load other fields from metadata if available
+    }
+
+    private void CancelForm()
+    {
+        showNewForm = false;
+        editingLocation = null;
+        ResetForm();
+    }
+
+    private async Task SaveLocation()
+    {
+        if (string.IsNullOrWhiteSpace(locationName) || string.IsNullOrWhiteSpace(locationAddress))
+        {
+            errorMessage = "Please fill in all required fields.";
+            return;
+        }
+
+        isSaving = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            if (editingLocation != null)
+            {
+                // Update existing
+                editingLocation.Name = locationName;
+                editingLocation.Description = locationDescription;
+                editingLocation.DateModified = DateTime.UtcNow;
+            }
+            else
+            {
+                // Create new address
+                var address = new Address
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+                    StreetAddress = locationAddress,
+                    DateCreated = DateTime.UtcNow
+                };
+                DbContext.Address.Add(address);
+
+                // Create new location
+                var newLocation = new Location
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = Guid.Parse("4db9057f-a1c6-47e8-b324-69f0ca12de85"),
+                    Name = locationName,
+                    Description = locationDescription,
+                    AddressId = address.Id,
+                    DateCreated = DateTime.UtcNow,
+                    DateModified = DateTime.UtcNow
+                };
+
+                DbContext.Locations.Add(newLocation);
+            }
+
+            await DbContext.SaveChangesAsync();
+            await LoadLocations();
+
+            ResetForm();
+            showNewForm = false;
+            editingLocation = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving location: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        locationName = string.Empty;
+        locationCode = string.Empty;
+        locationDescription = string.Empty;
+        locationAddress = string.Empty;
+        locationPhone = string.Empty;
+        locationEmail = string.Empty;
+        operatingHours = string.Empty;
+        isActive = true;
+        errorMessage = string.Empty;
+    }
+
+    private string? GetLocationAddress(Guid locationId)
+    {
+        return locationAddresses.TryGetValue(locationId, out var address) ? address : null;
+    }
+
+    private void ViewLocationStats(Guid locationId)
+    {
+        // Future: Navigate to location statistics page
+        Console.WriteLine($"View stats for location: {locationId}");
+    }
+}
